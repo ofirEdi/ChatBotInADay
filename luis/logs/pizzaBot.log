@@ -15,3 +15,4 @@
 2020-01-12 17:29:40 error: Cannot insert the value NULL into column 'username', table 'Ofir_test.dbo.orders'; column does not allow nulls. INSERT fails.
 2020-01-12 17:31:26 info: service is running
 2020-01-12 18:04:17 info: service is running
+2020-01-12 18:08:49 info: service is running
