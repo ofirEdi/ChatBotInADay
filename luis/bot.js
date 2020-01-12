@@ -6,6 +6,9 @@ const { DialogSet, WaterfallDialog, TextPrompt, NumberPrompt, ChoicePrompt, Dial
 const util = require("util");
 const {predict} = require('./luis');
 const {generateAnswer} = require('./qnaMaker');
+const logger = require("./logger/logger");
+const redis = require("redis");
+const {insertOrder} =  require('./db/mssql');
 
 // Define state property accessor names.
 const DIALOG_STATE_PROPERTY = 'dialogStateProperty';
@@ -46,6 +49,17 @@ const prices = {
     pizza: 50,
     topping: 5
 };
+
+// connect to redis syncronously
+let redisClient;
+try {
+    redisClient = redis.createClient(process.env.REDIS_URL);
+    // promisify redis get method
+    redisClient.get = util.promisify(redisClient.get);
+} catch(error) {
+    logger.error(error);
+    process.exit(1);
+}
 
 class PizzaBot {
     constructor(conversationState, userState) {
@@ -107,19 +121,24 @@ class PizzaBot {
                         await this.processLUISPredictionForEmptyState(luisPrediction, dialogContext, turnContext, userProfile);
                         //await turnContext.sendActivity(luisPrediction.topScoringIntent.intent);
                     } catch (error) {
-                        console.log(error);
+                        logger.error(error);
                         await turnContext.sendActivity("I'm sorry for the inconvinience but i can't help" +
                         " you right now. Please try to contact me later");
                     }
                     break;
                 case DialogTurnStatus.complete:
                     console.log("completed");
-                    const orderPhrase = userProfile.in.orderType === "delivery" ? 'You should expect your delivery to in the next 30-40 minutes' :
-                    'You will be able to pick-up your order in a 15-20 minutes';
-                    await turnContext.sendActivity(`Thank you for you order! ${orderPhrase}`);
-                    const pizzaGIF = CardFactory.animationCard('Bon Apetite!', [process.env.PIZZA_GIF]);
-                    await turnContext.sendActivity({attachments: [pizzaGIF]});
-                    userProfile = PizzaBot.initUserProfile(userProfile.pre.from);
+                    if (userProfile.post.status === "success") {
+                        const orderPhrase = userProfile.in.orderType === "delivery" ? 'You should expect your delivery to in the next 30-40 minutes' :
+                        'You will be able to pick-up your order in a 15-20 minutes';
+                        await turnContext.sendActivity(`Thank you for you order! ${orderPhrase}`);
+                        const pizzaGIF = CardFactory.animationCard('Bon Apetite!', [process.env.PIZZA_GIF]);
+                        await turnContext.sendActivity({attachments: [pizzaGIF]});
+                    } else {
+                        await turnContext.sendActivity(`It's embarassing but we can't process your order at the moment. Sorry for the inconvinience. 
+                        You can try and call our place at 03-6324422 or try me again later.`);
+                    }
+                    userProfile = PizzaBot.initUserProfile(userProfile.pre.user);
                     await this.userProfileAccessor.set(turnContext);
                     break;
                 case DialogTurnStatus.waiting:
@@ -130,6 +149,7 @@ class PizzaBot {
                     await turnContext.sendActivity(`Your order is cancelled. feel free to reach me if you would like to make a new one`);
                     break;
             }
+            console.log(turnContext.activity.text);
             // save conversation state
             await this.conversationState.saveChanges(turnContext);
             // save user profile
@@ -166,9 +186,15 @@ class PizzaBot {
     }
 
     // calculate order price
-    static calculateTotal(userProfile) {
-        const onePizzaWithTopics = (userProfile.in.toppings.length * prices.topping) + prices.pizza;
+    static async calculateTotal(userProfile) {
+        const pizzaPrice = parseInt(await redisClient.get("pizza"));
+        const toppingPrice = parseInt(await redisClient.get("topping"));
+        const onePizzaWithTopics = (userProfile.in.toppings.length * toppingPrice) + pizzaPrice;
         return onePizzaWithTopics * userProfile.in.quantity;
+    }
+
+    static closeRedisConnection() {
+        redisClient.quit();
     }
 
     // Process initial LUIS Prediction
@@ -203,7 +229,7 @@ class PizzaBot {
                 const qnaResults = await generateAnswer({question: turnContext.activity.text});
                 await turnContext.sendActivity(qnaResults.answers[0].answer);
             } catch (error) {
-                console.log(error);
+                logger.error(error);
                 await turnContext.sendActivity("Tha't doesn't mean anything to me :/ Can you try to be more specific?");
             }
         }
@@ -289,10 +315,10 @@ class PizzaBot {
         const userProfile = await this.userProfileAccessor.get(stepContext.context);
         await stepContext.context.sendActivity(`We are almost done! I just want to validate that everything is OK with your order`);
         const pizzaQuantityPhrase = userProfile.in.quantity > 1 ? `${userProfile.in.quantity} pizzas` : "a pizza";
-        const toppingsPhrase = userProfile.in.toppings.length > 0 ? userProfile.in.toppings.join(",") : "no toppings" ;
+        const toppingsPhrase = userProfile.in.toppings.length > 0 ? userProfile.in.toppings.join(", ") : "no toppings" ;
         const addressPhrase = userProfile.in.orderType === "delivery" ? ` to ${userProfile.in.address}` : ``;
         await stepContext.context.sendActivity(`a ${userProfile.in.orderType} of ${pizzaQuantityPhrase} with ${toppingsPhrase}${addressPhrase}`);
-        const price = PizzaBot.calculateTotal(userProfile);
+        const price = await PizzaBot.calculateTotal(userProfile);
         userProfile.in.price = price;
         await this.userProfileAccessor.set(stepContext.context, userProfile);
         return await stepContext.prompt(SELECTION_PROMPT, {
@@ -305,9 +331,23 @@ class PizzaBot {
     async processUserConfirmation(stepContext) {
         let userProfile = await this.userProfileAccessor.get(stepContext.context);
         if (stepContext.result.value === 'yes') {
+            try {
+                await insertOrder({
+                    type: userProfile.in.orderType,
+                    quantity: userProfile.in.quantity,
+                    toppings: userProfile.in.toppings.length > 0 ? userProfile.in.toppings.join(", ") : '',
+                    price: userProfile.in.price,
+                    username: userProfile.pre.user,
+                    userAddress: userProfile.in.address ? userProfile.in.address : '',
+                });
+                userProfile.post.status = "success";
+            } catch (error) {
+                userProfile.post.status = "failure";
+            }
+            await this.userProfileAccessor.set(stepContext.context, userProfile);
             return await stepContext.endDialog();
         } else {
-            userProfile = PizzaBot.initUserProfile(userProfile.pre.from);
+            userProfile = PizzaBot.initUserProfile(userProfile.pre.user);
             await this.userProfileAccessor.set(stepContext.context, userProfile);
             return await stepContext.cancelAllDialogs();
         }
@@ -331,7 +371,7 @@ class PizzaBot {
             await this.userProfileAccessor.set(promptContext.context, userProfile);
             return wasQuantityFound;  
         } catch (error) {
-            console.log(error);
+            logger.error(error);
             await promptContext.context.sendActivity("I'm sorry for the inconvinience but i can't help" +
             " you right now. Please try to contact me later");
             return false;
@@ -366,7 +406,7 @@ class PizzaBot {
                 return false;
             }
         } catch (error) {
-            console.log(error);
+            logger.error(error);
             await promptContext.context.sendActivity("I'm sorry for the inconvinience but i can't help" +
             " you right now. Please try to contact me later");
             return false;
@@ -387,7 +427,7 @@ class PizzaBot {
                 return false;
             }
         } catch (error) {
-            console.log(error);
+            logger.error(error);
             await promptContext.context.sendActivity("I'm sorry for the inconvinience but i can't help" +
             " you right now. Please try to contact me later");
             return false;

@@ -7,6 +7,9 @@ const path = require('path');
 const ENV_FILE = path.join(__dirname, '.env');
 dotenv.config({ path: ENV_FILE });
 const restify = require('restify');
+const logger = require("./logger/logger");
+const {initSQLConnection, closeSQLConnection} = require("./db/mssql");
+const {initMongoDBClient, closeMongoDBClientConnection} = require('./db/mongodb');
 
 // Import required bot services.
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
@@ -15,10 +18,24 @@ const {BotFrameworkAdapter, MemoryStorage, ConversationState, UserState } = requ
 // This bot's main dialog.
 const { PizzaBot } = require('./bot');
 
+// establish DBS connection
+const initDBSconnections = async () => {
+    try {
+        await initSQLConnection();
+        await initMongoDBClient();
+    } catch (error) {
+        logger.error(error);
+        process.emit('SIGINT');
+    }
+}
+
+// establish db connections before starting server
+initDBSconnections();
 
 // Create HTTP server
 const server = restify.createServer();
 server.listen(process.env.port || process.env.PORT || 3978, () => {
+    logger.info("service is running");
     console.log(`\n${ server.name } listening to ${ server.url }`);
     console.log('\nGet Bot Framework Emulator: https://aka.ms/botframework-emulator');
     console.log('\nTo talk to your bot, open the emulator select "Open Bot"');
@@ -68,3 +85,34 @@ server.post('/api/messages', (req, res) => {
         await pizzaBot.onTurn(context);
     });
 });
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+async function shutdown() {
+    try {
+        PizzaBot.closeRedisConnection();
+        console.log("Successfully closed connection to Redis");
+    } catch(error) {
+        logger.error(error);
+    }
+    try {
+        await closeSQLConnection();
+        console.log("closed sql connection successfully");
+    } catch (error) {
+        logger.error(error);
+    }
+    try {
+        await closeMongoDBClientConnection();
+        console.log("closed mongoDB connection successfully");
+    } catch (error) {
+        logger.error(error);
+    }
+    try {
+        server.close(() => {
+            console.log("Shutdown server successfully");
+        })
+    } catch (error) {
+        logger.error(error);
+    }
+}
