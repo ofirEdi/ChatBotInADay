@@ -8,7 +8,9 @@ const {predict} = require('./luis');
 const {generateAnswer} = require('./qnaMaker');
 const logger = require("./logger/logger");
 const redis = require("redis");
+const uuid = require("uuid/v4");
 const {insertOrder} =  require('./db/mssql');
+const {upsertConversationTurn, createConversationDocument} = require('./db/mongodb');
 
 // Define state property accessor names.
 const DIALOG_STATE_PROPERTY = 'dialogStateProperty';
@@ -128,28 +130,42 @@ class PizzaBot {
                     break;
                 case DialogTurnStatus.complete:
                     console.log("completed");
+                    let completeMessage;
                     if (userProfile.post.status === "success") {
                         const orderPhrase = userProfile.in.orderType === "delivery" ? 'You should expect your delivery to in the next 30-40 minutes' :
                         'You will be able to pick-up your order in a 15-20 minutes';
-                        await turnContext.sendActivity(`Thank you for you order! ${orderPhrase}`);
+                        completeMessage = `Thank you for you order! ${orderPhrase}`;
+                        PizzaBot.insertBotMessageToProfile(userProfile, [completeMessage]);
+                        await turnContext.sendActivity(completeMessage);
                         const pizzaGIF = CardFactory.animationCard('Bon Apetite!', [process.env.PIZZA_GIF]);
                         await turnContext.sendActivity({attachments: [pizzaGIF]});
                     } else {
-                        await turnContext.sendActivity(`It's embarassing but we can't process your order at the moment. Sorry for the inconvinience. 
-                        You can try and call our place at 03-6324422 or try me again later.`);
+                        completeMessage = `It's embarassing but we can't process your order at the moment. Sorry for the inconvinience. 
+                        You can try and call our place at 03-6324422 or try me again later.`;
+                        PizzaBot.insertBotMessageToProfile(userProfile, [completeMessage]);
+                        await turnContext.sendActivity(completeMessage);
                     }
-                    userProfile = PizzaBot.initUserProfile(userProfile.pre.user);
-                    await this.userProfileAccessor.set(turnContext);
+                    userProfile = PizzaBot.initUserProfile(userProfile.pre.user, userProfile.pre.conversationId, userProfile.in.messages);
                     break;
                 case DialogTurnStatus.waiting:
                     console.log("Waiting");
                     break;
                 case DialogTurnStatus.cancelled:
                     console.log("cancelled");
-                    await turnContext.sendActivity(`Your order is cancelled. feel free to reach me if you would like to make a new one`);
+                    const cancelMessage = `Your order is cancelled. feel free to reach me if you would like to make a new one`;
+                    PizzaBot.insertBotMessageToProfile(userProfile, [cancelMessage]);
+                    await turnContext.sendActivity(cancelMessage);
                     break;
             }
-            console.log(turnContext.activity.text);
+            userProfile.in.messages.user = turnContext.activity.text;
+            try {
+                upsertConversationTurn(userProfile.pre.conversationId, userProfile.in.messages);
+            } catch (error) {
+                logger.error(`failed to update turn ${turnData} for conversation ${convId} ` + err.stack || err);
+            }
+            // clean meassages for next turn
+            userProfile.in.messages = {};
+            await this.userProfileAccessor.set(turnContext, userProfile);
             // save conversation state
             await this.conversationState.saveChanges(turnContext);
             // save user profile
@@ -163,24 +179,31 @@ class PizzaBot {
             //console.log(util.inspect(turnContext, {depth: 8, colors:true}));
             if(!userProfile) {
                 // init profile
-                userProfile = PizzaBot.initUserProfile(turnContext.activity.membersAdded[0].name || "defaultUser");
+                userProfile = PizzaBot.initUserProfile(turnContext.activity.membersAdded[0].name || "defaultUser", uuid(), {});
                 // set user profile
                 await this.userProfileAccessor.set(turnContext, userProfile);
                 // save user profile
                 await this.userState.saveChanges(turnContext);
                 // send welcome message
                 await turnContext.sendActivity(`Hi there ${turnContext.activity.membersAdded[0].name}. How can I help you?`);
+                // create MongoDB document for statistics purposes
+                try {
+                    await createConversationDocument(userProfile.pre.conversationId, userProfile.pre.user);
+                } catch (error) {
+                    logger.error(`Failed to create document for conversation: ${userProfile.pre.conversationId} ` + error.stack || error);
+                }
             }
         }
     }
 
     // Generate default user profile
-    static initUserProfile(from) {
+    static initUserProfile(from, conversationId, messages) {
         return {
            pre: {
-               user: from
+               user: from,
+               conversationId,
            },
-           in: {},
+           in: { messages,},
            post: {} 
         }
     }
@@ -195,6 +218,14 @@ class PizzaBot {
 
     static closeRedisConnection() {
         redisClient.quit();
+    }
+    // insert message from bot to profile for statistical purposes (bot message is an array since in a turn bot can have multiple messages)
+    static insertBotMessageToProfile(userProfile, botMessage) {
+        if(!userProfile.in.messages.bot) {
+            userProfile.in.messages.bot = [...botMessage];
+        } else {
+            userProfile.in.messages.bot.push(...botMessage);
+        }
     }
 
     // Process initial LUIS Prediction
@@ -225,13 +256,18 @@ class PizzaBot {
             
         } else {
             // send request to QnA maker
+            let botMessage;
             try {
                 const qnaResults = await generateAnswer({question: turnContext.activity.text});
-                await turnContext.sendActivity(qnaResults.answers[0].answer);
+                botMessage = qnaResults.answers[0].answer; 
             } catch (error) {
                 logger.error(error);
-                await turnContext.sendActivity("Tha't doesn't mean anything to me :/ Can you try to be more specific?");
+                botMessage = ("Tha't doesn't mean anything to me :/ Can you try to be more specific?");
             }
+
+            PizzaBot.insertBotMessageToProfile(userProfile, [botMessage]);
+            await turnContext.sendActivity(botMessage);
+            await this.userProfileAccessor.set(turnContext, userProfile);
         }
     }
 
@@ -266,7 +302,10 @@ class PizzaBot {
     async processUserOrderType(stepContext) {
         // get user details
         const userProfile = await this.userProfileAccessor.get(stepContext.context);
-        await stepContext.context.sendActivity(`Great! ${userProfile.in.orderType} it is`);
+        const message = `Great! ${userProfile.in.orderType} it is`
+        PizzaBot.insertBotMessageToProfile(userProfile, [message]);
+        await stepContext.context.sendActivity(message);
+        await this.userProfileAccessor.set(stepContext.context, userProfile);
         return await stepContext.replaceDialog(MAIN_DIALOG);
     }
     async getPizzaQuantity(stepContext) {
@@ -278,7 +317,11 @@ class PizzaBot {
     }
 
     async processPizzaQuantity(stepContext) {
-        await stepContext.context.sendActivity(`Alright!`);
+        const userProfile = await this.userProfileAccessor.get(stepContext.context);
+        const message = `Alright!`;
+        PizzaBot.insertBotMessageToProfile(userProfile, [message]);
+        await stepContext.context.sendActivity(message);
+        await this.userProfileAccessor.set(stepContext.context, userProfile);
         return await stepContext.replaceDialog(MAIN_DIALOG);
     }
 
@@ -292,15 +335,21 @@ class PizzaBot {
 
     async processPizzaToppings(stepContext) {
         const userProfile = await this.userProfileAccessor.get(stepContext.context);
-        userProfile.in.toppings.length > 0 ? 
-        await stepContext.context.sendActivity("I like your choice! we will add to your pizza the toppings we offer.") :
-        await stepContext.context.sendActivity("Plain pizza sounds perfect!");
+        let message;
+        userProfile.in.toppings.length > 0 ? message = "I like your choice! we will add to your pizza the toppings we offer." : "Plain pizza sounds perfect!"
+        PizzaBot.insertBotMessageToProfile(userProfile, [message]);
+        await stepContext.context.sendActivity(message);
+        await this.userProfileAccessor.set(stepContext.context, userProfile);
         return await stepContext.replaceDialog(MAIN_DIALOG);
     }
 
     async getUserAddress(stepContext) {
+        const userProfile = await this.userProfileAccessor.get(stepContext.context);
+        const message = "Where should i deliver your order?";
+        PizzaBot.insertBotMessageToProfile(userProfile, [message]);
+        await this.userProfileAccessor.set(stepContext.context, userProfile);
         return await stepContext.prompt(ADDRESS_PROMPT, {
-            prompt: "Where should i deliver your order?",
+            prompt: message,
         });
     }
 
@@ -312,17 +361,25 @@ class PizzaBot {
     }
 
     async getUserConfirmation(stepContext) {
+        const botMessages = [];
+        let message = `We are almost done! I just want to validate that everything is OK with your order`;
+        botMessages.push(message);
         const userProfile = await this.userProfileAccessor.get(stepContext.context);
-        await stepContext.context.sendActivity(`We are almost done! I just want to validate that everything is OK with your order`);
+        await stepContext.context.sendActivity(message);
         const pizzaQuantityPhrase = userProfile.in.quantity > 1 ? `${userProfile.in.quantity} pizzas` : "a pizza";
         const toppingsPhrase = userProfile.in.toppings.length > 0 ? userProfile.in.toppings.join(", ") : "no toppings" ;
         const addressPhrase = userProfile.in.orderType === "delivery" ? ` to ${userProfile.in.address}` : ``;
-        await stepContext.context.sendActivity(`a ${userProfile.in.orderType} of ${pizzaQuantityPhrase} with ${toppingsPhrase}${addressPhrase}`);
         const price = await PizzaBot.calculateTotal(userProfile);
+        message = `a ${userProfile.in.orderType} of ${pizzaQuantityPhrase} with ${toppingsPhrase}${addressPhrase}`;
+        botMessages.push(message);
+        await stepContext.context.sendActivity(message);
         userProfile.in.price = price;
+        message = `Would you like to approve the order for a total of ${price} NIS?`;
+        botMessages.push(message);
+        PizzaBot.insertBotMessageToProfile(userProfile, botMessages);
         await this.userProfileAccessor.set(stepContext.context, userProfile);
         return await stepContext.prompt(SELECTION_PROMPT, {
-        prompt: `Would you like to approve the order for a total of ${price} NIS?`,
+        prompt: message,
         retryPrompt: `Please make a choice from the list`,
         choices: ['yes', 'no']
         });
@@ -347,7 +404,7 @@ class PizzaBot {
             await this.userProfileAccessor.set(stepContext.context, userProfile);
             return await stepContext.endDialog();
         } else {
-            userProfile = PizzaBot.initUserProfile(userProfile.pre.user);
+            userProfile = PizzaBot.initUserProfile(userProfile.pre.user, userProfile.pre.conversationId, userProfile.in.messages);
             await this.userProfileAccessor.set(stepContext.context, userProfile);
             return await stepContext.cancelAllDialogs();
         }
@@ -357,6 +414,7 @@ class PizzaBot {
     // validates that the information received by the user 
     async quantityValidator(promptContext) {
         const userProfile = await this.userProfileAccessor.get(promptContext.context);
+        PizzaBot.addPromptMessageToMessages(userProfile, promptContext.attemptCount, promptContext.options);
         let wasQuantityFound = false;
         try {
             // get luis prediction with user message after prompt
@@ -380,6 +438,7 @@ class PizzaBot {
 
     async toppingsValidator(promptContext) {
         const userProfile = await this.userProfileAccessor.get(promptContext.context);
+        PizzaBot.addPromptMessageToMessages(userProfile, promptContext.attemptCount, promptContext.options);
         let wereToppingsFound = false;
         try {
             // get luis prediction with user message after prompt
@@ -414,6 +473,7 @@ class PizzaBot {
     }
     async orderTypeValidator(promptContext) {
         const userProfile = await this.userProfileAccessor.get(promptContext.context);
+        PizzaBot.addPromptMessageToMessages(userProfile, promptContext.attemptCount, promptContext.options);
         try {
             // get luis prediction with user message after prompt
             const luisPrediction = await predict(promptContext.recognized.value);
@@ -432,6 +492,12 @@ class PizzaBot {
             " you right now. Please try to contact me later");
             return false;
         }
+    }
+
+    // add to userProfile prompt message from bot
+    static addPromptMessageToMessages(userProfile, attemptCount, options) {
+        attemptCount > 1 ? PizzaBot.insertBotMessageToProfile(userProfile, [options.retryPrompt]) :
+            PizzaBot.insertBotMessageToProfile(userProfile, [options.prompt]);
     }
 }
 module.exports.PizzaBot = PizzaBot;

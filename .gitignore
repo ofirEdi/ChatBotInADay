@@ -2,3 +2,4 @@
 *.js.map
 **.env
 **.log
+/luis/logs/pizzaBot.log
