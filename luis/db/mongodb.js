@@ -15,7 +15,7 @@ const compileMongoUrl = () => {
         mongoUrl += process.env.MONGO_HOST + `?retryWrites=true`;
         return mongoUrl;
 }
-
+// establish connection to MongoDB
 async function initMongoDBClient () {
     const mongoUrl = compileMongoUrl();
     mongodbPool = await mongodb.connect(mongoUrl, {
