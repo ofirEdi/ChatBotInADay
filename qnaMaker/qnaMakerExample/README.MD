@@ -1,6 +1,5 @@
-# Echo Bot template
-
-This bot has been created using [Bot Framework](https://dev.botframework.com), it shows how to create a simple bot that accepts input from the user and echoes it back.
+# QnA Bot
+- Simple Bot that demonstrates an integration with QnA Maker service
 
 ## Prerequisites
 - [Node.js](https://nodejs.org) version 10.14 or higher
@@ -9,8 +8,7 @@ This bot has been created using [Bot Framework](https://dev.botframework.com), i
     node --version
     ```
 # To run the bot locally
-- Download the bot code from the Build blade in the Azure Portal (make sure you click "Yes" when asked "Include app settings in the downloaded zip file?").
-    - If you clicked "No" you will need to copy all the Application Settings properties from your App Service to your local .env file.
+- Create a .env file and fill fields according to .env.example
 - Install modules
     ```bash
     npm install
