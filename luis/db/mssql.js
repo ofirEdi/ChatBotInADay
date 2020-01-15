@@ -2,7 +2,7 @@ const logger = require('../logger/logger');
 const sql = require('mssql');
 const uuid = require('uuid/v4');
 
-//configuration of Fenix potential insurees database
+//configuration of orders database
 const config = {
     user: process.env.SQL_USER,
     password: process.env.SQL_PASSWORD,
@@ -16,7 +16,7 @@ const config = {
 }
 
 let pool;
-
+// create pool connection to SQLServer
 async function initSQLConnection() {
     pool = await new sql.ConnectionPool(config).connect();
     pool.on('error', err => {
@@ -24,6 +24,7 @@ async function initSQLConnection() {
     });
 }
 
+// get Order details and insert it to orders table
 async function insertOrder(record) {
     return new Promise(async (resolve, reject) => {
         const ps = new sql.PreparedStatement(pool);
