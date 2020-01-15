@@ -28,3 +28,4 @@ Directory contains a project of Pizza Chatbot with More advanced concepts of Azu
 
 ### Misc.
 [Properly send Welcome Message](https://blog.botframework.com/2018/07/12/how-to-properly-send-a-greeting-message-and-common-issues-from-customers/)
+[QnA Maker Documentation](https://docs.microsoft.com/en-us/azure/cognitive-services/qnamaker/overview/overview)
