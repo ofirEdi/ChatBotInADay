@@ -1,0 +1,504 @@
+{
+  "luis_schema_version": "4.0.0",
+  "versionId": "0.1",
+  "name": "Pizza Place",
+  "desc": "",
+  "culture": "en-us",
+  "tokenizerVersion": "1.0.0",
+  "intents": [
+    {
+      "name": "addToppings"
+    },
+    {
+      "name": "no"
+    },
+    {
+      "name": "None"
+    },
+    {
+      "name": "pizzaDelivery"
+    },
+    {
+      "name": "pizzaOrder"
+    },
+    {
+      "name": "pizzaPickup"
+    }
+  ],
+  "entities": [],
+  "composites": [],
+  "closedLists": [
+    {
+      "name": "toppings",
+      "subLists": [
+        {
+          "canonicalForm": "tuna",
+          "list": [
+            "tuna fish"
+          ]
+        },
+        {
+          "canonicalForm": "cheese",
+          "list": [
+            "extra-cheese",
+            "extra cheese"
+          ]
+        },
+        {
+          "canonicalForm": "olives",
+          "list": [
+            "green olives"
+          ]
+        },
+        {
+          "canonicalForm": "mushrooms",
+          "list": [
+            "mushroom"
+          ]
+        },
+        {
+          "canonicalForm": "onions",
+          "list": [
+            "onion"
+          ]
+        },
+        {
+          "canonicalForm": "tomatoes",
+          "list": [
+            "tomato"
+          ]
+        }
+      ],
+      "roles": []
+    }
+  ],
+  "patternAnyEntities": [],
+  "regex_entities": [],
+  "prebuiltEntities": [
+    {
+      "name": "number",
+      "roles": []
+    }
+  ],
+  "model_features": [],
+  "regex_features": [],
+  "patterns": [],
+  "utterances": [
+    {
+      "text": "apples are green",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "are you making deliveries?",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "bring it to me",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "butter and sugar are tasty but might make you gain weight",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "can i have 2 pizzas",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "can i have 3 pizza",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "can i have a pizza",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "can i have a pizza delivery",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "can i make a delivery",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "can i order a pizza",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "can you make me a pizza",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "delivery",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "delivery is preffered",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "delivery please",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "do you have a phone number?",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "do you make pickups?",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "do you want to build a snow man?",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "extra cheese and onions",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "get down from this tree",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "i don't want any",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "i like it when it rains",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "i like my country",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "i love you",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "i rather not",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "i want a delivery of 2 pizzas",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "i want a pickup of two pizzas with onions and tuna",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "i want onions",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "i want pizza with tuna and onions",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "i want the following topics: tomatoes, tuna",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "i want to come and take it",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "i want to order 2 pizzas with tuna and onions",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "i want to order pizza with onions, extra cheese and salmon",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "i want to pickup",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "i want you to deliver to my place",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "i will be glad to have a pizza",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "i will come",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "i will pickup",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "i work in kpmg",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "i would like to have a pizza",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "i would like to have some olives and cheese",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "i would like to have two pizzas with tomatoes and olives",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "i would like to order 4 pizzas",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "i would like to order pizzas",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "in place",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "let's be friends",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "location",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "make me a delivery",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "no",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "no thank you",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "none",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "not a delivery",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "not for me",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "not for me bro",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "note at all",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "order a delivery to my place",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "order pizz",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "penguins are cool",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "pepperoni, anchovies",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "pick up",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "pickup",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "pick-up",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "pickup please",
+      "intent": "pizzaPickup",
+      "entities": []
+    },
+    {
+      "text": "pizza please",
+      "intent": "pizzaOrder",
+      "entities": []
+    },
+    {
+      "text": "send a delivery guy",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "send it to me",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "ship it to my place",
+      "intent": "pizzaDelivery",
+      "entities": []
+    },
+    {
+      "text": "shooby dooby",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "skip",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "sound great",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "sure, mushrooms",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "swamps are dangerous",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "thank you",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "tuna and olives",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "what is your ditribution area",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "what is your operating hours",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "what is your phone number?",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "where are you located?",
+      "intent": "None",
+      "entities": []
+    },
+    {
+      "text": "without",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "without toppings",
+      "intent": "no",
+      "entities": []
+    },
+    {
+      "text": "yams and pineapple",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "yes please",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "yes please tuna",
+      "intent": "addToppings",
+      "entities": []
+    },
+    {
+      "text": "yes, put onions and tomato",
+      "intent": "addToppings",
+      "entities": []
+    }
+  ],
+  "settings": []
+}
