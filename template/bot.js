@@ -32,10 +32,10 @@ class QnaBot {
         this.dialogs.add(new WaterfallDialog(MULTI_TURN_DIALOG)
             .addStep(this.qnaPrompt.bind(this))
             .addStep(this.processQnaPromptAnswer.bind(this)));
+
     }
 
     async onTurn(turnContext) {
-        console.log(util.inspect(turnContext,{depth: 8, colors: true}));
         if (turnContext.activity.type === ActivityTypes.Message) {
              // Run the DialogSet - let the framework identify the current state of the dialog from
             // the dialog stack and figure out what (if any) is the active dialog.
@@ -58,7 +58,8 @@ class QnaBot {
                             await turnContext.sendActivity(userProfile.in.qnaAnswer);
                         } else {
                             await dialogContext.beginDialog(MULTI_TURN_DIALOG);
-                        } 
+                        }
+                        
                     } catch(error) {
                         console.log(error);
                         await turnContext.sendActivity(`Sorry for the inconvinience but QnA is not available :/`);
@@ -111,6 +112,8 @@ class QnaBot {
 
     // Process responses from QnaMaker generateQuestion API
     static processQnaAnswer(qnaResults, userProfile, userQuestion) {
+        // update userProfile with qna answers
+        userProfile.in.qnaSession = true;
         // update user question for multi-turn
         userProfile.in.qnaPreviousUserQuery = userQuestion;
         // get answer form qnaResults
