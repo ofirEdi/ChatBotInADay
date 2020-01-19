@@ -10,6 +10,9 @@ Directory contains the following:
 ## luis
 Directory contains a project of Pizza Chatbot with More advanced concepts of Azure Bot Framework (dialog status, nested dialogs, prompts validation and more). This Bot also has integration with Redis, SQLServer and MongoDB to Demonstrate integration of Azure Bot Framework to different technologies.
 
+# template
+template of echobot as created by Azure web app bot.
+
 ## Further reading
 
 ### Azure Bot Framework
