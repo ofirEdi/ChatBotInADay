@@ -120,7 +120,7 @@ class QnaBot {
         // generate empty array for choices from qna
         userProfile.in.qnaChoices = [];
         // check if it is a multi-turn
-        if (qnaResults.answers[0].context.prompts.length > 0) {
+        if (qnaResults.answers[0].context && qnaResults.answers[0].context.prompts.length > 0) {
             // map qna results to userProfile
             userProfile.in.qnaChoices = qnaResults.answers[0].context.prompts.map((promptValue) => {
                 return {qnaId: promptValue.qnaId, text: promptValue.displayText};
